@@ -2,7 +2,7 @@
     "hostname": "localhost",
     "port": 18745,
     "peers": 1,
-    "content_info": [],
+    "content_info": ["Carnegie_Mellon_University.jpg","design.pdf"],
     "peer_info": [
         {
             "hostname": "localhost",

@@ -7,12 +7,12 @@
         {
             "hostname": "localhost",
             "port": 18742,
-            "content_info": ["Carnegie_Mellon_University.jpg"]
+            "content_info": ["trailer_400p.ogg"]
         },
         {
             "hostname": "localhost",
             "port": 18743,
-            "content_info": []
+            "content_info": ["Firefox_Final_VO.ogv"]
         },
         {
             "hostname": "localhost",
@@ -22,12 +22,12 @@
         {
             "hostname": "localhost",
             "port": 18745,
-            "content_info": []
+            "content_info": ["Carnegie_Mellon_University.jpg","design.pdf"]
         },
         {
             "hostname": "localhost",
             "port": 18746,
-            "content_info": []
+            "content_info": ["Carnegie_Mellon_University.jpg"]
         }
     ]
 }

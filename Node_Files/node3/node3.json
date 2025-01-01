@@ -2,7 +2,7 @@
     "hostname": "localhost",
     "port": 18743,
     "peers": 1,
-    "content_info": [],
+    "content_info": ["Firefox_Final_VO.ogv"],
     "peer_info": [
         {
             "hostname": "localhost",
