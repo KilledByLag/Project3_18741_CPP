@@ -2,8 +2,10 @@
 #include <cassert>
 #include <string>
 #include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
 
-
+using json = nlohmann::json;
 
 class Node{
     public:
@@ -11,16 +13,25 @@ class Node{
         // Node file path and operating port
         std::string NODEPATH;
         int PORT;
+        json DATA;
 
-        //Make Constructor for feeding the path and port
+        //Constructor
         Node(std::string nodePath, std::string port){
         NODEPATH = parsePath(nodePath);
         PORT = parsePort(port);
+        DATA = parseJSON(NODEPATH);
         }
 
-    
+        std::tuple<bool, int> get_neighbor_port(std::string filename){
+            auto [found, neighbor_port] = check_file_exists(filename, DATA);
+            return {found, neighbor_port};
+        }
+
+
     private:
-        // Parse Path
+        //Other Functions:
+
+        //Parse Path
         std::string parsePath(std::string path){
             return std::filesystem::weakly_canonical(std::filesystem::path(path)).string();
         }
@@ -28,6 +39,29 @@ class Node{
         int parsePort(std::string port){
             return std::stoi(port);
         }
+        //Read JSON File
+        json parseJSON(std::string path){
+            std::ifstream file(path);
+            return json::parse(file);
+        }
+        //Check whether requested file exists in peer_content
+        std::tuple<bool, int> check_file_exists(std::string filename, json& DATA){
+            bool found{false};
+            int neighbor_port{};
+            for(const auto& peer:DATA["peer_info"]){
+                for(const std::string& file:peer["content_info"]){
+                    if (filename == file){
+                        found = true;
+                        neighbor_port = peer["port"];
+                        return {found, neighbor_port};
+                    }
+                }
+
+            }
+            return {found, neighbor_port};
+        }
+
+
 };
 
 
@@ -42,6 +76,7 @@ int main(int argc, char **argv){
 
     std::cout << "the NODEPATH is: " << node.NODEPATH << std::endl;
     std::cout<< "The operating PORT is: " << node.PORT << std::endl;
+    std::cout << "The node data is: " << node.DATA << std::endl;
 
     //Start threads here
 
