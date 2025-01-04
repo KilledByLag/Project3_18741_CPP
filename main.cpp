@@ -4,16 +4,18 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <thread>
+#include <atomic>
 
 using json = nlohmann::json;
 
 class Node{
     public:
-
         // Node file path and operating port
         std::string NODEPATH;
         int PORT;
         json DATA;
+        std::atomic<bool> running{true}; // Atomic flag for threads
 
         //Constructor
         Node(std::string nodePath, std::string port){
@@ -22,9 +24,26 @@ class Node{
         DATA = parseJSON(NODEPATH);
         }
 
-        std::tuple<bool, int> get_neighbor_port(std::string filename){
-            auto [found, neighbor_port] = check_file_exists(filename, DATA);
-            return {found, neighbor_port};
+        // Input thread : 2 commands - kill, filename
+        void command_thread(){
+
+            while (running){
+
+                std::string command;
+                std::cout << "Enter Command (Kill/filename): " << std::endl;
+                std::cin >> command;
+
+                    if (command == std::string("kill")){
+                        std::cout << "Shutting down now..." << std::endl;
+                        running = false;
+                    }
+                    else{
+                        auto [found, port] = check_file_exists(command, DATA);
+                        std::cout<<std::boolalpha<<found<<std::endl;
+                        std::cout<<port<<std::endl;
+                    }
+                
+            }
         }
 
 
@@ -79,6 +98,8 @@ int main(int argc, char **argv){
     std::cout << "The node data is: " << node.DATA << std::endl;
 
     //Start threads here
+    std::thread commands(&Node::command_thread, &node); //Non static member, so operates on the instance of the class, therefore need to pass the reference to the func, reference to the class instance
+    commands.join();
 
 
     return 0;
