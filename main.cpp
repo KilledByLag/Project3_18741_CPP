@@ -8,6 +8,9 @@
 #include <atomic>
 #include <winsock2.h>
 #include <mutex>
+#include <chrono>
+
+// Current implementation assumes both client and server will be LOCALHOST with different port numbers. Make it robust later
 
 #pragma comment(lib, "ws2_32.lib") // Link Winsock library
 
@@ -38,9 +41,18 @@ class Node{
         DATA = parseJSON(NODEPATH);
         initializewinsock();
         node_socket = initializeSocket();
+        if (node_socket == INVALID_SOCKET){
+            throw std::runtime_error("Failed to initialize socket");
+            }
         }
+        
         //Destructor
         ~Node(){
+            running = false;
+            if (node_socket != INVALID_SOCKET){
+                closesocket(node_socket);
+                std::cout << "Closed Sock Successfully" << std::endl;
+            }
             WSACleanup();
         }
 
@@ -51,7 +63,7 @@ class Node{
 
                 std::string command;
                 std::cout << "Enter Command (Kill/filename): " << std::endl;
-                std::cin >> command;
+                std::getline(std::cin, command);
 
                     if (command =="kill"){
                         std::cout << "Shutting down now..." << std::endl;
@@ -80,22 +92,13 @@ class Node{
         }
 
         void client_thread(){
-            //My address
-            sockaddr_in client_addr;
-            client_addr.sin_family = AF_INET;
-            client_addr.sin_port = htons(PORT);
-            client_addr.sin_addr.s_addr = inet_addr(HOST.c_str());
-
+            //Destination address
             sockaddr_in server_addr;
             server_addr.sin_family = AF_INET;
             server_addr.sin_addr.s_addr = inet_addr(HOST.c_str());
 
             std::string filename{};
 
-            if(bind(node_socket, (sockaddr*)&client_addr, sizeof(client_addr)) == SOCKET_ERROR){
-                std::cerr << "Error binding socket" << std::endl;
-                running = false;
-            }
             while(running){
                 {
                     std::lock_guard<std::mutex> lock(data_mutex);
@@ -107,14 +110,14 @@ class Node{
 
                             if (result == SOCKET_ERROR){
                                 std::cerr << "Failed to send filename" << WSAGetLastError() << std::endl;
-                            }
+                                }
+
                             else{
                                 std::cout<< "Filename sent to " << shared_port << " Successfully" <<std::endl;
                                 shared_port = 0;
                                 shared_filename = "";
-                            }
+                                }
                     }
-\
                 }
             }
         }
@@ -143,6 +146,24 @@ class Node{
             }
             else{
                 std::cout << "Creating socket successful" << std::endl;
+
+                std::cout << "Binding socket now" <<std::endl;
+                sockaddr_in my_addr;
+                my_addr.sin_family = AF_INET;
+                my_addr.sin_port = htons(PORT);
+                my_addr.sin_addr.s_addr = inet_addr(HOST.c_str());
+
+                if(bind(node_socket, (sockaddr*)&my_addr, sizeof(my_addr)) != SOCKET_ERROR){
+                    std::cout << "Binding Successful" << ";Will use " << PORT << " To send and receive" << std::endl;
+                }
+                else{
+                    std::cerr << "Error binding socket " << WSAGetLastError() << std::endl;
+                    closesocket(node_socket);
+                    running = false;
+                    return INVALID_SOCKET;
+
+                }
+
             }
             return node_socket;
 
