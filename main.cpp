@@ -32,7 +32,6 @@ class Node{
         //The shared resource
         int shared_port{};
         std::string shared_filename{};
-        bool data_ready{false};
 
         //Constructor
         Node(std::string nodePath, std::string port){
@@ -78,7 +77,6 @@ class Node{
                                 std::lock_guard<std::mutex> lock(data_mutex);
                                 shared_filename = command;
                                 shared_port = port;
-                                data_ready = true;
                             }
                         }
                         else{
