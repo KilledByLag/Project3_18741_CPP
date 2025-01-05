@@ -7,6 +7,7 @@
 #include <thread>
 #include <atomic>
 #include <winsock2.h>
+#include <mutex>
 
 #pragma comment(lib, "ws2_32.lib") // Link Winsock library
 
@@ -21,8 +22,14 @@ class Node{
         int PORT;
         json DATA;
         std::atomic<bool> running{true}; // Atomic flag for threads
-        std::string HOST = "localhost";
+        std::string HOST = "127.0.0.1";
         SOCKET node_socket;
+
+        std::mutex data_mutex; // Lock for shared resources
+        //The shared resource
+        int shared_port{};
+        std::string shared_filename{};
+        bool data_ready{false};
 
         //Constructor
         Node(std::string nodePath, std::string port){
@@ -52,8 +59,21 @@ class Node{
                     }
                     else{
                         auto [found, port] = check_file_exists(command, DATA);
-                        std::cout<<std::boolalpha<<found<<std::endl;
-                        std::cout<<port<<std::endl;
+                        if (found){
+                            std::cout<<std::boolalpha<<found<<std::endl;
+                            std::cout<<port<<std::endl;
+                            {
+                                std::lock_guard<std::mutex> lock(data_mutex);
+                                shared_filename = command;
+                                shared_port = port;
+                                data_ready = true;
+                            }
+                        }
+                        else{
+                            std::cout<<"File not found"<<std::endl;
+                        }
+
+
                     }
                 
             }
@@ -66,17 +86,39 @@ class Node{
             client_addr.sin_port = htons(PORT);
             client_addr.sin_addr.s_addr = inet_addr(HOST.c_str());
 
-            if(bind(node_socket, reinterpret_cast<sockaddr*>(&client_addr), sizeof(client_addr)) == SOCKET_ERROR){
+            sockaddr_in server_addr;
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_addr.s_addr = inet_addr(HOST.c_str());
+
+            std::string filename{};
+
+            if(bind(node_socket, (sockaddr*)&client_addr, sizeof(client_addr)) == SOCKET_ERROR){
                 std::cerr << "Error binding socket" << std::endl;
                 running = false;
             }
-            
-            
+            while(running){
+                {
+                    std::lock_guard<std::mutex> lock(data_mutex);
+                    if (shared_port != 0){
+                            server_addr.sin_port = htons(shared_port);
+                            filename = shared_filename;
+                            
+                            int result = sendto(node_socket, filename.c_str(), static_cast<int>(filename.size()),0, (sockaddr*)(&server_addr),sizeof(server_addr));
 
-            
+                            if (result == SOCKET_ERROR){
+                                std::cerr << "Failed to send filename" << WSAGetLastError() << std::endl;
+                            }
+                            else{
+                                std::cout<< "Filename sent to " << shared_port << " Successfully" <<std::endl;
+                                shared_port = 0;
+                                shared_filename = "";
+                            }
+                    }
+\
+                }
+            }
         }
-
-
+            
     private:
         //Other Functions:
 
@@ -155,7 +197,10 @@ int main(int argc, char **argv){
 
     //Start threads here
     std::thread commands(&Node::command_thread, &node); //Non static member, so operates on the instance of the class, therefore need to pass the reference to the func, reference to the class instance
+    std::thread client(&Node::client_thread,&node);
+
     commands.join();
+    client.join();
 
 
     return 0;
