@@ -123,17 +123,17 @@ class Node{
         }
 
         void server_thread() {
-            char buffer[BUFSIZE] = {};
+            char message[BUFSIZE] = {};
             sockaddr_in client;                // To store the address of the sender
             int slen = sizeof(client);         // Length of the client address structure
 
             while (running) {
-                int recvResult = recvfrom(node_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client, &slen);
+                int recvResult = recvfrom(node_socket, message, BUFSIZE, 0, (sockaddr*)&client, &slen); //recvresult has the length of message
                 if (recvResult == SOCKET_ERROR) {
                     std::cerr << "Error receiving message: " << WSAGetLastError() << std::endl;
                 } else {
-                    buffer[recvResult] = '\0'; // Null-terminate the received message
-                    std::cout << "Received Data: " << buffer << std::endl;
+                    message[recvResult] = '\0'; // Null-terminate the received message
+                    std::cout << "Received Data: " << message << std::endl;
 
                     // Print the sender's address and port
                     std::cout << "from" << inet_ntoa(client.sin_addr) << ntohs(client.sin_port) << std::endl;
