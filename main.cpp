@@ -10,6 +10,8 @@
 #include <mutex>
 #include <chrono>
 
+#define BUFSIZE 1024
+
 // Current implementation assumes both client and server will be LOCALHOST with different port numbers. Make it robust later
 
 #pragma comment(lib, "ws2_32.lib") // Link Winsock library
@@ -34,10 +36,10 @@ class Node{
         std::string shared_filename{};
 
         //Constructor
-        Node(std::string nodePath, std::string port){
+        Node(std::string nodePath){
         NODEPATH = parsePath(nodePath);
-        PORT = parsePort(port);
         DATA = parseJSON(NODEPATH);
+        PORT = DATA["port"];
         initializewinsock();
         node_socket = initializeSocket();
         if (node_socket == INVALID_SOCKET){
@@ -119,6 +121,25 @@ class Node{
                 }
             }
         }
+
+        void server_thread() {
+            char buffer[BUFSIZE] = {};
+            sockaddr_in client;                // To store the address of the sender
+            int slen = sizeof(client);         // Length of the client address structure
+
+            while (running) {
+                int recvResult = recvfrom(node_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client, &slen);
+                if (recvResult == SOCKET_ERROR) {
+                    std::cerr << "Error receiving message: " << WSAGetLastError() << std::endl;
+                } else {
+                    buffer[recvResult] = '\0'; // Null-terminate the received message
+                    std::cout << "Received Data: " << buffer << std::endl;
+
+                    // Print the sender's address and port
+                    std::cout << "from" << inet_ntoa(client.sin_addr) << ntohs(client.sin_port) << std::endl;
+                }
+            }
+        }
             
     private:
         //Other Functions:
@@ -171,10 +192,6 @@ class Node{
         std::string parsePath(std::string path){
             return std::filesystem::weakly_canonical(std::filesystem::path(path)).string();
         }
-        //Parse Port
-        int parsePort(std::string port){
-            return std::stoi(port);
-        }
         //Read JSON File
         json parseJSON(std::string path){
             std::ifstream file(path);
@@ -204,11 +221,11 @@ class Node{
 int main(int argc, char **argv){
 
     // Check if num_args is valid
-    assert((argc == 3) && "Invalid Args ----- args[0] = main.exe, args[1] == {node_filepath}, args[2] == {port_num}");
+    assert((argc == 2) && "Invalid Args ----- args[0] = main.exe, args[1] == {node_filepath}, args[2] == {port_num}");
 
     //Input the args to the Node Class
 
-    Node node(argv[1], argv[2]); //Used the constructor in the class
+    Node node(argv[1]); //Used the constructor in the class
 
     std::cout << "the NODEPATH is: " << node.NODEPATH << std::endl;
     std::cout<< "The operating PORT is: " << node.PORT << std::endl;
@@ -217,9 +234,11 @@ int main(int argc, char **argv){
     //Start threads here
     std::thread commands(&Node::command_thread, &node); //Non static member, so operates on the instance of the class, therefore need to pass the reference to the func, reference to the class instance
     std::thread client(&Node::client_thread,&node);
+    std::thread server(&Node::server_thread, &node);
 
     commands.join();
     client.join();
+    server.join();
 
 
     return 0;
