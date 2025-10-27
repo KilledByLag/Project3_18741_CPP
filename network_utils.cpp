@@ -12,7 +12,7 @@
 // ---------- ClientUtils Implementation ----------
 
 bool ClientUtils::start_handshake(const int &rx_socket, sockaddr_in &serverAddr) {
-    std::print("🔄 [Client] Starting 3-way handshake with server {}...\n", ntohs(serverAddr.sin_port));
+    std::print("[Client] Starting 3-way handshake with server {}...\n", ntohs(serverAddr.sin_port));
     char buffer[1024];
     socklen_t serverLen = sizeof(serverAddr);
     ssize_t bytesReceived;
@@ -20,19 +20,19 @@ bool ClientUtils::start_handshake(const int &rx_socket, sockaddr_in &serverAddr)
     sendto(rx_socket, ThreeWayHandshakeMessages::SYN.data(),
            ThreeWayHandshakeMessages::SYN.size(), 0,
            (const sockaddr *)&serverAddr, sizeof(serverAddr));
-    std::print("📤 [Client] Sent SYN\n");
+    std::print("[Client] Sent SYN\n");
 
     bytesReceived = recvfrom(rx_socket, buffer, sizeof(buffer) - 1, 0,
                              (sockaddr *)&serverAddr, &serverLen);
     if (bytesReceived > 0) {
         buffer[bytesReceived] = '\0';
         std::string_view received_msg(buffer);
-        std::print("📥 [Client] Received during handshake: {}\n", received_msg);
+        std::print("[Client] Received during handshake: {}\n", received_msg);
         if (received_msg == ThreeWayHandshakeMessages::SYNACK) {
             sendto(rx_socket, ThreeWayHandshakeMessages::ACK.data(),
                    ThreeWayHandshakeMessages::ACK.size(), 0,
                    (const sockaddr *)&serverAddr, sizeof(serverAddr));
-            std::print("✅ [Client] Connection established with: {}\n",
+            std::print("[Client] Connection established with: {}\n",
                        ntohs(serverAddr.sin_port));
             return true;
         } else {
@@ -78,7 +78,7 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
     int last_ack_sent = -1;
     AckFrame ack{};
     ssize_t bytesReceived;
-    std::print("📥 [Client] Waiting for frames...\n");
+    std::print("[Client] Waiting for frames...\n");
 
     while (!isEOF) {
         {
@@ -88,7 +88,7 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
         }
 
         if (bytesReceived < 0) {
-            std::print("⚠️  [Client] No data received (retrying...)\n");
+            std::print("[Client] No data received (retrying...)\n");
             continue;
         }
 
@@ -108,10 +108,10 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
                    (const sockaddr *)&serverAddr, serverLen);
 
             last_ack_sent = ack.ack_num;
-            std::print("📨 [Client] Received frame {}, sent CACK {}\n",
+            std::print("[Client] Received frame {}, sent CACK {}\n",
                        rx_frame.sequence_number, ack.ack_num);
         } else {
-            std::print("🚫 [Client] Out-of-order frame {} (expected {}), resending CACK {}\n",
+            std::print("[Client] Out-of-order frame {} (expected {}), resending CACK {}\n",
                        rx_frame.sequence_number, expected_seq, last_ack_sent);
 
             ack.ack_num = last_ack_sent;
@@ -143,7 +143,7 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
     }
 
     outfile.close();
-    std::print("✅ [Client] File '{}' received successfully ({} frames)\n",
+    std::print("[Client] File '{}' received successfully ({} frames)\n",
                outname, frames_received);
 }
 
@@ -163,7 +163,7 @@ std::vector<Dataframe> ServerUtils::create_frame_vector(const std::filesystem::p
     int seq_num = 0;
     char buffer[PAYLOAD_BUFFER];
 
-    std::print("📦 [Server] Framing file: '{}' ({} bytes)\n",
+    std::print("[Server] Framing file: '{}' ({} bytes)\n",
                filepath.filename().string(), size_of_file);
 
     while (bytes_framed < size_of_file) {
@@ -183,7 +183,7 @@ std::vector<Dataframe> ServerUtils::create_frame_vector(const std::filesystem::p
         seq_num++;
     }
 
-    std::print("✅ [Server] Created {} frames from '{}'\n",
+    std::print("[Server] Created {} frames from '{}'\n",
                frames.size(), filepath.filename().string());
     return frames;
 }
@@ -206,7 +206,7 @@ void ServerUtils::send_data(std::vector<Dataframe> &frames,
 
     const auto timeout_total = std::chrono::milliseconds(500);
 
-    std::print("📤 [Server] Sending {} frames to client {}...\n",
+    std::print("[Server] Sending {} frames to client {}...\n",
                frames.size(), ntohs(clientAddr.sin_port));
 
     while (seq_num_base < seq_num_max) {
@@ -222,7 +222,7 @@ void ServerUtils::send_data(std::vector<Dataframe> &frames,
                        (const sockaddr *)&clientAddr, static_cast<socklen_t>(clientLen));
             }
 
-            std::print("📦 [Server] Sent frame {}\n", frame.sequence_number);
+            std::print("[Server] Sent frame {}\n", frame.sequence_number);
             seq_num_next++;
         }
 
@@ -237,7 +237,7 @@ void ServerUtils::send_data(std::vector<Dataframe> &frames,
             if (bytesReceived > 0) {
                 std::memcpy(&ack, rxbuffer, sizeof(AckFrame));
                 if (ack.ack_num >= seq_num_base && ack.ack_num < seq_num_max) {
-                    std::print("✅ [Server] CACK {} received — sliding base {} → {}\n",
+                    std::print("[Server] CACK {} received — sliding base {} → {}\n",
                                ack.ack_num, seq_num_base, ack.ack_num + 1);
                     seq_num_base = ack.ack_num + 1;
                     ack_received = true;
@@ -264,9 +264,9 @@ void ServerUtils::send_data(std::vector<Dataframe> &frames,
                            (const sockaddr *)&clientAddr, static_cast<socklen_t>(clientLen));
                 }
 
-                std::print("🔁 [Server] Resent frame {}\n", frame.sequence_number);
+                std::print("[Server] Resent frame {}\n", frame.sequence_number);
             }
         }
     }
-    std::print("🏁 [Server] Completed sending {} frames successfully!\n", seq_num_max);
+    std::print("[Server] Completed sending {} frames successfully!\n", seq_num_max);
 }
