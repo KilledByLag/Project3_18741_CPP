@@ -100,12 +100,8 @@ Node::~Node() {
     // Signal threads to stop if they’re still running
     kill = true;
 
-    if (SocketIsBind) {
-        close(mySocket);  // ✅ Release the socket file descriptor
-        std::print("🔒 Socket on port {} closed.\n", port);
-    }
 
-    std::print("🧹 Node resources cleaned up.\n");
+    std::print("Node resources cleaned up.\n");
 }
 
 // ---------- Getters ----------
