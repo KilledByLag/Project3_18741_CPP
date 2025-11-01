@@ -49,7 +49,7 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
                                           sockaddr_in &serverAddr,
                                           std::mutex &socket_lock,
                                           const std::filesystem::path &node_path) {
-    std::print("📡 [Client] Preparing to receive file '{}'...\n", filename);
+    std::print("[Client] Preparing to receive file '{}'...\n", filename);
     char recvBuffer[sizeof(Dataframe)];
     bool handshakeStatus = false;
     socklen_t serverLen = sizeof(serverAddr);
@@ -70,7 +70,7 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
         std::scoped_lock sockLock(socket_lock);
         sendto(rx_socket, filename.c_str(), filename.size(), 0,
                (const sockaddr *)&serverAddr, serverLen);
-        std::print("📤 [Client] Requested file: {}\n", filename);
+        std::print("[Client] Requested file: {}\n", filename);
     }
 
     size_t frames_received = 0;
@@ -122,7 +122,7 @@ void ClientUtils::start_rx_data_as_client(const int &rx_socket,
         }
     }
 
-    std::print("💾 [Client] All frames received, writing file...\n");
+    std::print("[Client] All frames received, writing file...\n");
 
     std::sort(rx_frames.begin(), rx_frames.end(),
               [](const Dataframe &a, const Dataframe &b) {
@@ -249,7 +249,7 @@ void ServerUtils::send_data(std::vector<Dataframe> &frames,
         }
 
         if (!ack_received) {
-            std::print("⏳ [Server] Timeout — resending window from {} to {}\n",
+            std::print("[Server] Timeout — resending window from {} to {}\n",
                        seq_num_base,
                        std::min(seq_num_base + tx_window_size - 1, seq_num_max - 1));
 
